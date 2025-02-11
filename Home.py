@@ -9,8 +9,14 @@ from prompts import *
 # 📌 답변 초기화
 is_answer = [True, True, True, True]
 
+# 📌 OpenAI API 키 설정
+api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='', type='password')
+if api_key:
+    client = OpenAI(api_key=api_key)  # 변경: OpenAI 클라이언트를 인스턴스화합니다.
+    st.session_state["openai_api_key"] = api_key
+
 # 📌 OpenAI API 키 로드 함수
-@st.cache_data
+# @st.cache_data
 # user 한글 이슈로 인해 임시 주석 처리
 # def load_config():
 #     """ secrets.toml에서 OpenAI API 키를 로드하는 함수 """
@@ -18,6 +24,7 @@ is_answer = [True, True, True, True]
 
 # config = load_config()
 # openai.api_key = config["openai_api_key"]  # OpenAI API 키 설정
+
 
 # 📌 Mermaid 다이어그램 생성 함수
 def mermaid(code):
@@ -38,7 +45,7 @@ def mermaid(code):
 # 📌 OpenAI 응답 처리 함수 (GPT)
 def get_gpt_response(model, prompt, stream=False):
     """ OpenAI GPT 모델을 호출하는 함수 """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=prompt,
         stream=stream
@@ -57,7 +64,7 @@ st.info("꿈을 위한 맞춤 진로 여행!\n\n진로·목표 설정 → 스텝
 with st.sidebar:
     st.header("Uway - Dream Trip ✈️", divider="rainbow")
 
-    openai.api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='',type='password')
+    # openai.api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='',type='password')
 
     if openai.api_key:
         st.session_state["openai_api_key"] = openai.api_key
@@ -121,7 +128,7 @@ if submit and name and job:
 
             collected_messages = []
             for chunk in gpt_response1:
-                chunk_message = chunk["choices"][0]["delta"]
+                chunk_message = chunk.choices[0].delta
                 if "content" in chunk_message:
                     collected_messages.append(chunk_message["content"])
                     gpt_response1 = "".join(collected_messages)
@@ -140,7 +147,7 @@ if submit and name and job:
             })
 
             gpt_response2 = get_gpt_response("gpt-4o-mini", new_gpt_prompt, stream=False)
-            gpt_response2 = gpt_response2["choices"][0]["message"]["content"]
+            gpt_response2 = gpt_response2.choices[0].message.content
 
             # Mermaid 다이어그램 파싱 및 렌더링
             start_keyword, end_keyword = "```mermaid", "```"
@@ -159,7 +166,7 @@ if submit and name and job:
             new_gpt_prompt.append({"role": "user", "content": new_user_prompts[2]})
 
             gpt_response3 = get_gpt_response("gpt-4o-mini", new_gpt_prompt, stream=False)
-            gpt_response3 = gpt_response3["choices"][0]["message"]["content"]
+            gpt_response3 = gpt_response3.choices[0].message.content
 
             try:
                 list_content = json.loads(gpt_response3)
@@ -176,7 +183,7 @@ if submit and name and job:
     if is_answer[3]:
         st.subheader(f"AI가 그린 {name}님의 미래 모습 🤖🔮", divider=True)
         with st.spinner("미래의 당신을 그리는 중이에요..."):
-            dalle_response = openai.Image.create(
+            dalle_response = client.Image.create(
                 prompt=f"A portrait of a {job}, cheering and friendly mood, cartoon low poly style.",
                 n=1, size="512x512"
             )
