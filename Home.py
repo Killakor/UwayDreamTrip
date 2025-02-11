@@ -57,6 +57,12 @@ st.info("꿈을 위한 맞춤 진로 여행!\n\n진로·목표 설정 → 스텝
 with st.sidebar:
     st.header("Uway - Dream Trip ✈️", divider="rainbow")
 
+    openai.api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='',type='password')
+
+    if openai.api_key:
+        st.session_state["openai_api_key"] = openai.api_key
+    st.markdown("---")
+
     # 사용자 입력 폼
     with st.form("parameters-form"):
         st.subheader("사용자 정보")
