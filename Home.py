@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import openai
+from openai import OpenAI  # OpenAI 클래스 가져오기
 import pandas as pd
 import json
 import plotly.express as px
@@ -8,23 +9,6 @@ from prompts import *
 
 # 📌 답변 초기화
 is_answer = [True, True, True, True]
-
-# 📌 OpenAI API 키 설정
-api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='', type='password')
-if api_key:
-    client = OpenAI(api_key=api_key)  # 변경: OpenAI 클라이언트를 인스턴스화합니다.
-    st.session_state["openai_api_key"] = api_key
-
-# 📌 OpenAI API 키 로드 함수
-# @st.cache_data
-# user 한글 이슈로 인해 임시 주석 처리
-# def load_config():
-#     """ secrets.toml에서 OpenAI API 키를 로드하는 함수 """
-#     return {"openai_api_key": st.secrets["openai_api_key"]}
-
-# config = load_config()
-# openai.api_key = config["openai_api_key"]  # OpenAI API 키 설정
-
 
 # 📌 Mermaid 다이어그램 생성 함수
 def mermaid(code):
@@ -43,8 +27,19 @@ def mermaid(code):
     )
 
 # 📌 OpenAI 응답 처리 함수 (GPT)
+# @st.cache_data # 캐시 데이터 사용
 def get_gpt_response(model, prompt, stream=False):
-    """ OpenAI GPT 모델을 호출하는 함수 """
+    # 세션에서 API 키 유지
+    api_key = st.session_state.get("openai_api_key", "")
+    
+    if not api_key:
+        st.error("🚨 OpenAI API 키가 입력되지 않았습니다!")
+        return None
+    
+    # OpenAI 클라이언트 객체 생성
+    client = OpenAI(api_key=api_key)
+
+    # OpenAI GPT 모델을 호출하는 함수
     response = client.chat.completions.create(
         model=model,
         messages=prompt,
@@ -64,8 +59,8 @@ st.info("꿈을 위한 맞춤 진로 여행!\n\n진로·목표 설정 → 스텝
 with st.sidebar:
     st.header("Uway - Dream Trip ✈️", divider="rainbow")
 
-    # openai.api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='',type='password')
-
+    # api session 입력 정보
+    openai.api_key = st.text_input(label='OpenAI API KEY', placeholder='OpenAI API Key를 입력해주세요.', value='',type='password')
     if openai.api_key:
         st.session_state["openai_api_key"] = openai.api_key
     st.markdown("---")
@@ -76,6 +71,7 @@ with st.sidebar:
         name = st.text_input("이름")
         job = st.text_input("희망 직업")
         age = st.slider("나이", 10, 20, 17, 1)
+        gender = st.radio("성별", ["남성", "여성"])
         school = st.selectbox("학교", ["중학교", "고등학교", "대학교"], index=1)
         mbti = st.selectbox("MBTI", [
             "ISTJ", "ISFJ", "INFJ", "INTJ", "ISTP", "ISFP", "INFP", "INTP",
@@ -121,21 +117,30 @@ if submit and name and job:
         with st.spinner("꿈으로 향하는 여행지 티켓을 발행 중이에요..."):
             new_gpt_prompt.append({
                 "role": "user",
-                "content": new_user_prompts[0] % (name, age, job, school, language, mbti)
+                "content": new_user_prompts[0] % (name, age, gender, job, school, language, mbti)
             })
 
+            # ✅ `stream=True` 사용하여 스트리밍 응답 처리
             gpt_response1 = get_gpt_response("gpt-4o-mini", new_gpt_prompt, stream=True)
 
             collected_messages = []
+            full_response = ""
+
             for chunk in gpt_response1:
-                chunk_message = chunk.choices[0].delta
-                if "content" in chunk_message:
-                    collected_messages.append(chunk_message["content"])
-                    gpt_response1 = "".join(collected_messages)
-                    answer1.markdown(f"🤖 {gpt_response1}")
+                if isinstance(chunk, tuple):  # 🔥 튜플인 경우 첫 번째 요소 사용
+                    chunk = chunk[0]
 
-            new_gpt_prompt.append({"role": "assistant", "content": gpt_response1})
+                if hasattr(chunk, "choices") and hasattr(chunk.choices[0], "delta") and hasattr(chunk.choices[0].delta, "content"):
+                    content = chunk.choices[0].delta.content
+                    if content is not None:  # 🔥 None 값 방지
+                        collected_messages.append(content)
+                    full_response = "".join(collected_messages)
 
+                    # ✅ 실시간으로 UI 업데이트
+                    answer1.markdown(f"🤖 {full_response}")
+
+            new_gpt_prompt.append({"role": "assistant", "content": full_response})
+            
 
     # 🚀 2단계: 꿈으로 가는 로드맵
     if is_answer[1]:
@@ -143,7 +148,7 @@ if submit and name and job:
         with st.spinner("꿈으로 향하는 로드맵을 그리는 중이에요..."):
             new_gpt_prompt.append({
                 "role": "user",
-                "content": new_user_prompts[1] % (name, age, job, school, language, mbti),
+                "content": new_user_prompts[1] % (name, age, gender, job, school, language, mbti),
             })
 
             gpt_response2 = get_gpt_response("gpt-4o-mini", new_gpt_prompt, stream=False)
@@ -162,31 +167,59 @@ if submit and name and job:
     # 🚀 3단계: 직업 분석 결과
     if is_answer[2]:
         st.subheader(f"AI가 분석한 {job} 🔍👨‍💼", divider=True)
-        with st.spinner("꿈으로 향하는 능력치를 계산하는 중이에요..."):
-            new_gpt_prompt.append({"role": "user", "content": new_user_prompts[2]})
+    with st.spinner("꿈으로 향하는 능력치를 계산하는 중이에요..."):
+        new_gpt_prompt.append({"role": "user", "content": new_user_prompts[2]})
 
-            gpt_response3 = get_gpt_response("gpt-4o-mini", new_gpt_prompt, stream=False)
+        gpt_response3 = get_gpt_response("gpt-4o-mini", new_gpt_prompt, stream=False)
+
+        if not gpt_response3 or not gpt_response3.choices or not gpt_response3.choices[0].message.content:
+            st.error("❌ OpenAI 응답이 비어 있습니다. 다시 시도해주세요.")
+        else:
             gpt_response3 = gpt_response3.choices[0].message.content
 
             try:
-                list_content = json.loads(gpt_response3)
-                df = pd.DataFrame({"r": list_content["score"], "theta": ["직업적합도", "난이도", "소요비용", "소요기간", "예상수입", "업무강도"]})
-                fig = px.line_polar(df, r="r", theta="theta", line_close=True)
-                fig.update_traces(fill="toself")
-                st.write(fig)
-                st.markdown(list_content["description"])
-            except json.JSONDecodeError:
-                st.error("❌ 직업 분석 결과를 파싱할 수 없습니다.")
+                # 🔍 JSON 부분만 추출 (응답 내 텍스트 제거)
+                json_start = gpt_response3.find("{")
+                json_end = gpt_response3.rfind("}") + 1
+                json_data = gpt_response3[json_start:json_end]
+
+                list_content = json.loads(json_data)
+
+                # 🔍 'score' 키 확인 후 변환
+                if "score" not in list_content:
+                    st.error("❌ OpenAI 응답에서 'score' 데이터가 없습니다.")
+                    st.write("🔍 OpenAI 응답 (디버깅):", list_content)
+                else:
+                    df = pd.DataFrame({
+                        "r": list_content["score"],
+                        "theta": ["직업적합도", "난이도", "소요비용", "소요기간", "예상수입", "업무강도"]
+                    })
+                    fig = px.line_polar(df, r="r", theta="theta", line_close=True)
+                    fig.update_traces(fill="toself")
+                    st.write(fig)
+                    st.markdown(list_content["description"])
+
+            except json.JSONDecodeError as e:
+                st.error(f"❌ JSON 변환 실패: {e}")
+                st.write("🔍 OpenAI 응답 내용:", gpt_response3)  # 디버깅 출력
 
 
     # 🚀 4단계: AI가 그린 미래 모습
     if is_answer[3]:
         st.subheader(f"AI가 그린 {name}님의 미래 모습 🤖🔮", divider=True)
         with st.spinner("미래의 당신을 그리는 중이에요..."):
-            dalle_response = client.Image.create(
-                prompt=f"A portrait of a {job}, cheering and friendly mood, cartoon low poly style.",
-                n=1, size="512x512"
+            # 세션에서 API 키 유지
+            api_key = st.session_state.get("openai_api_key", "")
+            if not api_key:
+                st.error("🚨 OpenAI API 키가 입력되지 않았습니다!")
+
+            # OpenAI 클라이언트 객체 생성
+            client = OpenAI(api_key=api_key)
+
+            # DALL-E 이미지 생성
+            dalle_response = client.images.generate(
+                prompt=f"A portrait of a {job}, an image of a {gender}, cheering and friendly mood, cartoon low poly style.", n=1, size="512x512"
             )
-            st.image(dalle_response['data'][0]['url'])
+            st.image(dalle_response.data[0].url)
 
     st.button("친구에게 공유하기")
