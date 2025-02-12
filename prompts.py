@@ -67,12 +67,3 @@ description: 각각에 대한 설명을 하나의 string으로 unordered list wi
 "description": "- 직업적합도: 직업적합도는 85점으로, 선생님의 역할에는 ENFP 유형의 사람이 잘 맞습니다. 이들은 열정적이며, 창의적인 아이디어를 가지고 있으며, 다른 사람들에게 긍정적인 영향을 미치는 데 탁월합니다.\\n- 난이도: 난이도는 70점으로, 선생님이 되기 위해서는 교육과정을 이해하고, 학생들의 개인적인 요구 사항에 대응하며, 다양한 교육 기술을 습득하는 데 도전이 필요합니다.\\n- 소요비용: 소요비용은 60점으로, 선생님이 되기 위해서는 대학에서 교육학 학위를 취득해야 하며, 이는 시간과 비용이 소요됩니다.\\n- 소요기간: 소요기간은 80점으로, 대학교육과 교사 자격증 취득을 포함하여 약 4~5년이 소요됩니다.\\n- 예상수입: 예상 수입은 75점으로, 선생님의 수입은 국가와 지역, 교육 단계에 따라 다르지만, 일반적으로 안정적인 수입을 기대할 수 있습니다.\\n- 업무강도: 업무 강도는 65점으로, 선생님의 업무는 학생들의 학습을 지도하고, 학생들의 성장을 돕는 것이 주요한 업무이지만, 이 외에도 학부모와의 커뮤니케이션, 학교 행정 업무 등 다양한 업무를 수행해야 합니다."
 }```"""
 ]
-
-dalle_prompt_ori = """You are a image generation prompt bot for DALL-E. Generate a prompt for generating a image by the given input word.
-
-Example:
-- Input1: 의사
-- Input2: 성별
-- Output: a doctor, holding a stethoscope on his hand, x-ray image
-
-You MUST respond in shorty only with "Output"!"""

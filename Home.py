@@ -15,15 +15,17 @@ def mermaid(code):
     """ Mermaid 다이어그램을 렌더링하는 함수 """
     components.html(
         f"""
-        <pre class="mermaid">
-            {code}
-        </pre>
+        <div style="width:100%; overflow:auto;">
+            <pre class="mermaid" style="height:auto; min-height:500px; max-height:1000px;">
+                {code}
+            </pre>
+        </div>
         <script type="module">
             import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
             mermaid.initialize({{ startOnLoad: true, theme: "dark" }});
         </script>
         """,
-        height=500,
+        height=800,
     )
 
 # 📌 OpenAI 응답 처리 함수 (GPT)
@@ -50,10 +52,40 @@ def get_gpt_response(model, prompt, stream=False):
 
 # 📌 Streamlit UI 설정
 st.set_page_config(page_title="Dream Trip - Uway AI 진로 검사", layout="wide", page_icon="⭐️")
-
+st.markdown(
+    """
+    <style>
+        .main-header {
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background-color: #f9f9f9;
+            color: #333;
+            padding: 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+st.markdown(
+    """
+    <div class='info-box'>
+        <h2>🔥너의 미래를 바꿀 가장 강력한 기회! 🔥</h2>
+        <p>진로 목표 설정부터 맞춤형 가이드까지! <br>AI가 분석한 최적의 커리어 루트를 확인하고 한 걸음 먼저 나아가 보세요. 🚀</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 st.header("Dream Trip ✈️✨", divider="rainbow")
-st.info("꿈을 위한 맞춤 진로 여행!\n\n진로·목표 설정 → 스텝별 가이드 → 커리어 목표 달성", icon="✈️")
-
+st.info("진로 설정 → AI 맞춤 분석 → 목표 달성까지! 단 1분!\n\n네가 가야 할 길을 빠르게 탐색해보세요.", icon="✅")
 
 # 📌 Sidebar (사용자 입력)
 with st.sidebar:
@@ -71,7 +103,11 @@ with st.sidebar:
         name = st.text_input("이름")
         job = st.text_input("희망 직업")
         age = st.slider("나이", 10, 20, 17, 1)
-        gender = st.radio("성별", ["남성", "여성"])
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            st.write("성별")
+        with col2:
+            gender = st.radio("", ["남성", "여성"], horizontal=True)
         school = st.selectbox("학교", ["중학교", "고등학교", "대학교"], index=1)
         mbti = st.selectbox("MBTI", [
             "ISTJ", "ISFJ", "INFJ", "INTJ", "ISTP", "ISFP", "INFP", "INTP",
@@ -218,7 +254,9 @@ if submit and name and job:
 
             # DALL-E 이미지 생성
             dalle_response = client.images.generate(
-                prompt=f"A portrait of a {job}, an image of a {gender}, cheering and friendly mood, cartoon low poly style.", n=1, size="512x512"
+                prompt = (
+                    f"A cartoon-style illustration of a person working as a {job}. The character is {gender} and is depicted in a lively, expressive manner. The background includes relevant elements that represent their profession, creating a visually engaging scene."
+                )
             )
             st.image(dalle_response.data[0].url)
 
